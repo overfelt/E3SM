@@ -1,5 +1,4 @@
 module od_common
-
 !
 ! This module contains code common to different orographic drag 
 ! parameterizations.
