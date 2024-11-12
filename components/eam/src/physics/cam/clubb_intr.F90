@@ -930,7 +930,7 @@ end subroutine clubb_init_cnst
     call addfld ('TPERTBLT',        horiz_only,     'A',             'K', 'perturbation temperature at PBL top')
     !
     if (use_od_fd) then
-    !!added for TOFD output
+    !added for turbulent orographic form drag (TOFD) output
     call addfld ('DTAUX3_FD',(/'lev'/),'A','m/s2','U tendency - fd orographic drag')
     call addfld ('DTAUY3_FD',(/'lev'/),'A','m/s2','V tendency - fd orographic drag')
     call addfld ('DUSFC_FD',horiz_only,'A','N/m2','fd zonal oro surface stress')
@@ -1993,15 +1993,15 @@ end subroutine clubb_init_cnst
     endif
         !
     if (use_od_fd) then
-        gwd_ls=.false.
-        gwd_bl=.false.
-        gwd_ss=.false.
-        gwd_fd=use_od_fd
-        dummy_nm=0.0_r8
+        gwd_ls    =.false.
+        gwd_bl    =.false.
+        gwd_ss    =.false.
+        gwd_fd    =use_od_fd
+        dummy_nm  =0.0_r8
         dummy_utgw=0.0_r8
         dummy_vtgw=0.0_r8
         dummy_ttgw=0.0_r8
-        !sgh30 as the input for TOFD instead of sgh
+        !sgh30 as the input for turbulent orographic form drag (TOFD) instead of sgh
 	call gw_oro_interface(state,cam_in,sgh30,pbuf,hdtime,dummy_nm,&
                               gwd_ls,gwd_bl,gwd_ss,gwd_fd,&
                               od_ls_ncleff,od_bl_ncd,od_ss_sncleff,&
@@ -2014,7 +2014,7 @@ end subroutine clubb_init_cnst
                               dusfc_bl=dummx_bl,dvsfc_bl=dummy_bl,&
                               dusfc_ss=dummx_ss,dvsfc_ss=dummy_ss,&
                               dusfc_fd=dusfc_fd,dvsfc_fd=dvsfc_fd)
-                              !
+
         call outfld ('DTAUX3_FD', dtaux3_fd,  pcols, lchnk)
         call outfld ('DTAUY3_FD', dtauy3_fd,  pcols, lchnk)
         call outfld ('DUSFC_FD', dusfc_fd,  pcols, lchnk)
@@ -3269,38 +3269,37 @@ end subroutine clubb_init_cnst
     enddo
 
     if (use_od_ss) then
-    !add calculation of bulk richardson number here
-    !
-    !compute the whole level th and thv for diagnose of bulk richardson number
-    thv_lv=0.0_r8
-    th_lv=0.0_r8
+      !add calculation of bulk richardson number here
+      !compute the whole level th and thv for diagnose of bulk richardson number
+      thv_lv=0.0_r8
+      th_lv =0.0_r8
 
-    !use the same virtual potential temperature formula as above (thv) except for all vertical levels
-    !used for bulk richardson number below in pblintd_ri
-    do i=1,ncol
-      do k=1,pver
-         th_lv(i,k) = state%t(i,k)*state%exner(i,k)
-         if (use_sgv) then
-           thv_lv(i,k) = th_lv(i,k)*(1.0_r8+zvir*state%q(i,k,ixq) &
-                    - state%q(i,k,ixcldliq))  
-         else
-           thv_lv(i,k) = th_lv(i,k)*(1.0_r8+zvir*state%q(i,k,ixq))
-         end if
+      !use the same virtual potential temperature formula as above (thv) except for all vertical levels
+      !used for bulk richardson number below in pblintd_ri
+      do i=1,ncol
+        do k=1,pver
+          th_lv(i,k) = state%t(i,k)*state%exner(i,k)
+            if (use_sgv) then
+              thv_lv(i,k) = th_lv(i,k)*(1.0_r8+zvir*state%q(i,k,ixq) &
+                            - state%q(i,k,ixcldliq))  
+            else
+              thv_lv(i,k) = th_lv(i,k)*(1.0_r8+zvir*state%q(i,k,ixq))
+            end if
+        enddo
       enddo
-    enddo
 
-    !recalculate the kbfs stored in kbfs_pcol for bulk richardson number in pblintd_ri
-    kbfs_pcol=0.0_r8
-    do i=1,ncol
+      !recalculate the kbfs stored in kbfs_pcol for bulk richardson number in pblintd_ri
+      kbfs_pcol=0.0_r8
+      do i=1,ncol
         call calc_ustar( state%t(i,pver), state%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), rrho, ustar(i) )
         call calc_obklen( th(i), thv(i), cam_in%cflx(i,1), cam_in%shf(i), rrho, ustar(i), &
                         kinheat, kinwat, kbfs, obklen(i) )
         kbfs_pcol(i)=kbfs
-    enddo
+      enddo
 
-    !calculate the bulk richardson number
-    call pblintd_ri(ncol, gravit, thv_lv, state%zm, state%u, state%v, &
-                ustar, obklen, kbfs_pcol, state%ribulk)
+      !calculate the bulk richardson number
+      call pblintd_ri(ncol, gravit, thv_lv, state%zm, state%u, state%v, &
+                      ustar, obklen, kbfs_pcol, state%ribulk)
     endif
 
     return
