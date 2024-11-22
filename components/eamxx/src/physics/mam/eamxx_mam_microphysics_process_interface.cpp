@@ -2,8 +2,9 @@
 #include <physics/mam/eamxx_mam_microphysics_process_interface.hpp>
 // impl namespace for some driver level functions for microphysics
 
-#include "physics/rrtmgp/shr_orb_mod_c2f.hpp"
 #include "readfiles/photo_table_utils.cpp"
+#include "readfiles/find_season_index_utils.hpp"
+#include "physics/rrtmgp/shr_orb_mod_c2f.hpp"
 
 namespace scream {
 
@@ -552,8 +553,6 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 
   const int photo_table_len = get_photo_table_work_len(photo_table_);
   work_photo_table_ = view_2d("work_photo_table", ncol_, photo_table_len);
-  const int sethet_work_len = mam4::mo_sethet::get_total_work_len_sethet();
-  work_set_het_ = view_2d("work_set_het_array", ncol_, sethet_work_len);
   cmfdqr_ = view_1d("cmfdqr_", nlev_);
 
   // here's where we store per-column photolysis rates
@@ -808,7 +807,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   const auto zenith_angle = acos_cosine_zenith_;
   constexpr int gas_pcnst = mam_coupling::gas_pcnst();
 
-  const auto &vert_emis_output = vert_emis_output_;
+  const auto &elevated_emis_output = elevated_emis_output_;
   const auto &extfrc           = extfrc_;
   const auto &forcings         = forcings_;
   constexpr int extcnt         = mam4::gas_chemistry::extcnt;
