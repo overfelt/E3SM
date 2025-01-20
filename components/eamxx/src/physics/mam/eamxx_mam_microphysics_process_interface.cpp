@@ -609,6 +609,12 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
 //  RUN_IMPL
 // ================================================================
 void MAMMicrophysics::run_impl(const double dt) {
+
+static int t = 0;
+static bool first_time = true;
+if (!first_time) return;
+if (first_time) first_time = false;
+
   const int ncol         = ncol_;
   const int nlev         = nlev_;
   const auto scan_policy = ekat::ExeSpaceUtils<
@@ -846,6 +852,112 @@ void MAMMicrophysics::run_impl(const double dt) {
   const int month       = timestamp().get_month();  // 1-based
   const int surface_lev = nlev - 1;                 // Surface level
 
+
+
+if (0) {
+auto qv = Kokkos::create_mirror_view(wet_atm_.qv);
+auto qc = Kokkos::create_mirror_view(wet_atm_.qc);
+auto nc = Kokkos::create_mirror_view(wet_atm_.nc);
+auto qi = Kokkos::create_mirror_view(wet_atm_.qi);
+auto ni = Kokkos::create_mirror_view(wet_atm_.ni);
+Kokkos::deep_copy(qv, wet_atm_.qv);
+Kokkos::deep_copy(qc, wet_atm_.qc);
+Kokkos::deep_copy(nc, wet_atm_.nc);
+Kokkos::deep_copy(qi, wet_atm_.qi);
+Kokkos::deep_copy(ni, wet_atm_.ni);
+for (int icol=0; icol<ncol; ++icol) {
+for (int i=0; i<nlev; ++i) {
+if (qv.data()) std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" qv("<<icol<<","<<i<<"):"<<std::setprecision(14) <<qv(icol,i)<<std::endl;
+if (qc.data()) std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" qc("<<icol<<","<<i<<"):"<<std::setprecision(14) <<qc(icol,i)<<std::endl;
+if (nc.data()) std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" nc("<<icol<<","<<i<<"):"<<std::setprecision(14) <<nc(icol,i)<<std::endl;
+if (qi.data()) std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" qi("<<icol<<","<<i<<"):"<<std::setprecision(14) <<qi(icol,i)<<std::endl;
+if (ni.data()) std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" ni("<<icol<<","<<i<<"):"<<std::setprecision(14) <<ni(icol,i)<<std::endl;
+}}
+}
+
+if (0) {
+  {
+    auto &dry_atm = postprocess_.dry_atm_post_;
+    auto qv = Kokkos::create_mirror_view(dry_atm.qv);
+    Kokkos::deep_copy(qv, dry_atm.qv);
+    for (int icol=0; icol<ncol; ++icol)
+    for (int j = 0; j < nlev; ++j)
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" atm.qv("<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<qv(icol,j)<<std::endl;
+  }
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    auto &dry_aero = postprocess_.dry_aero_post_;
+    auto int_nmr = Kokkos::create_mirror_view(dry_aero.int_aero_nmr[m]);
+    auto cld_nmr = Kokkos::create_mirror_view(dry_aero.cld_aero_nmr[m]);
+    Kokkos::deep_copy(int_nmr, dry_aero.int_aero_nmr[m]);
+    Kokkos::deep_copy(cld_nmr, dry_aero.cld_aero_nmr[m]);
+    for (int icol=0; icol<ncol; ++icol) {
+    for (int j = 0; j < nlev; ++j)  {
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.int_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_nmr(icol,j) <<std::endl;
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.cld_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_nmr(icol,j) <<std::endl;
+    }}
+  }
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    for (int a = 0; a <  mam4::num_species_mode(m); ++a) {
+      auto &dry_aero = postprocess_.dry_aero_post_;
+      auto int_mmr = Kokkos::create_mirror_view(dry_aero.int_aero_mmr[m][a]);
+      auto cld_mmr = Kokkos::create_mirror_view(dry_aero.cld_aero_mmr[m][a]);
+      Kokkos::deep_copy(int_mmr, dry_aero.int_aero_mmr[m][a]);
+      Kokkos::deep_copy(cld_mmr, dry_aero.cld_aero_mmr[m][a]);
+      for (int icol=0; icol<ncol; ++icol) {
+      for (int j = 0; j < nlev; ++j)  {
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.int_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_mmr(icol,j)<<std::endl;
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.cld_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_mmr(icol,j)<<std::endl;
+      }}
+    }
+  }
+  for (int g = 0; g < mam_coupling::num_aero_gases(); ++g) {
+    auto &dry_aero = postprocess_.dry_aero_post_;
+    auto gas_mmr = Kokkos::create_mirror_view(dry_aero.gas_mmr[g]);
+    Kokkos::deep_copy(gas_mmr, dry_aero.gas_mmr[g]);
+    for (int icol=0; icol<ncol; ++icol)
+    for (int j = 0; j < nlev; ++j)
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.gas_mmr("<<g<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<gas_mmr(icol,j)<<std::endl;
+  }
+}
+
+if (0) {
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    auto &wet_aero = postprocess_.wet_aero_post_;
+    auto int_nmr = Kokkos::create_mirror_view(wet_aero.int_aero_nmr[m]);
+    auto cld_nmr = Kokkos::create_mirror_view(wet_aero.cld_aero_nmr[m]);
+    Kokkos::deep_copy(int_nmr, wet_aero.int_aero_nmr[m]);
+    Kokkos::deep_copy(cld_nmr, wet_aero.cld_aero_nmr[m]);
+    for (int icol=0; icol<ncol; ++icol) {
+    for (int j = 0; j < nlev; ++j)  {
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.int_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_nmr(icol,j) <<std::endl;
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.cld_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_nmr(icol,j) <<std::endl;
+    }}
+  }
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    for (int a = 0; a <  mam4::num_species_mode(m); ++a) {
+      auto &wet_aero = postprocess_.wet_aero_post_;
+      auto int_mmr = Kokkos::create_mirror_view(wet_aero.int_aero_mmr[m][a]);
+      auto cld_mmr = Kokkos::create_mirror_view(wet_aero.cld_aero_mmr[m][a]);
+      Kokkos::deep_copy(int_mmr, wet_aero.int_aero_mmr[m][a]);
+      Kokkos::deep_copy(cld_mmr, wet_aero.cld_aero_mmr[m][a]);
+      for (int icol=0; icol<ncol; ++icol) {
+      for (int j = 0; j < nlev; ++j)  {
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.int_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_mmr(icol,j)<<std::endl;
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.cld_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_mmr(icol,j)<<std::endl;
+      }}
+    }
+  }
+  for (int g = 0; g < mam_coupling::num_aero_gases(); ++g) {
+    auto &wet_aero = postprocess_.wet_aero_post_;
+    auto gas_mmr = Kokkos::create_mirror_view(wet_aero.gas_mmr[g]);
+    Kokkos::deep_copy(gas_mmr, wet_aero.gas_mmr[g]);
+    for (int icol=0; icol<ncol; ++icol)
+    for (int j = 0; j < nlev; ++j)
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.gas_mmr("<<g<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<gas_mmr(icol,j)<<std::endl;
+  }
+}
+Kokkos::fence();
+
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
       "MAMMicrophysics::run_impl", policy,
@@ -990,10 +1102,225 @@ void MAMMicrophysics::run_impl(const double dt) {
       });  // parallel_for for the column loop
   Kokkos::fence();
 
+
+if (0) {
+auto inv = Kokkos::create_mirror_view(invariants);
+Kokkos::deep_copy(inv, invariants);
+for (int icol=0; icol<ncol; ++icol)
+for (int i=0; i<nlev; ++i)
+for (int j=0; j<mam4::gas_chemistry::nfs; ++j)
+std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" invariants("<<icol<<","<<i<<","<<j<<"):"<<std::setprecision(14) <<inv(icol,i,j)<<std::endl;
+}
+
+if (0) {
+auto fluxes = Kokkos::create_mirror_view(constituent_fluxes);
+Kokkos::deep_copy(fluxes, constituent_fluxes);
+for (int icol=0; icol<ncol; ++icol)
+for(int ispc = offset_aerosol; ispc < mam4::pcnst; ++ispc)
+std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" fluxes("<<icol<<","<<ispc<<"):"<<std::setprecision(14) <<fluxes(icol,ispc)<<std::endl;
+}
+if (1) {
+  const auto &extfrc              = extfrc_;
+  auto extfrc_host = Kokkos::create_mirror_view(extfrc);
+  Kokkos::deep_copy(extfrc_host, extfrc);
+  const int extcnt = mam4::gas_chemistry::extcnt;
+  for (int icol=0; icol<ncol; ++icol)
+  for (int i=0; i<nlev; ++i)
+  for (int j=0; j<extcnt; ++j)
+  std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" extfrc("<<icol<<","<<i<<","<<j<<"):"<<std::setprecision(14) <<extfrc_host(icol,i,j)<<std::endl;
+}
+if (1) {
+  const auto &photo_rates =  photo_rates_;
+  auto photo_rates_host = Kokkos::create_mirror_view(photo_rates);
+  Kokkos::deep_copy(photo_rates_host, photo_rates);
+  const int phtcnt =  mam4::mo_photo::phtcnt;
+  for (int icol=0; icol<ncol; ++icol)
+  for (int i=0; i<nlev; ++i)
+  for (int j=0; j<phtcnt; ++j)
+  std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" photo_rates("<<icol<<","<<i<<","<<j<<"):"<<std::setprecision(14) <<photo_rates_host(icol,i,j)<<std::endl;
+}
+if (1){
+  const auto &photo_table =  photo_table_;
+  const int np_xs = photo_table.np_xs;
+  auto prs = Kokkos::create_mirror_view(photo_table.prs);
+  Kokkos::deep_copy(prs, photo_table.prs);
+  for (int i=0; i<np_xs; ++i)
+  std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" prs("<<i<<"):"<<std::setprecision(14) <<prs(i)<<std::endl;
+}
+if (1) {
+  const auto &photo_table =  photo_table_;
+  const int np_xs = photo_table.np_xs;
+  auto dprs = Kokkos::create_mirror_view(photo_table.dprs);
+  Kokkos::deep_copy(dprs, photo_table.dprs);
+  for (int i=0; i<np_xs-1; ++i)
+  std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dprs("<<i<<"):"<<std::setprecision(14) <<dprs(i)<<std::endl;
+}
+if (1) {
+  const auto &photo_table =  photo_table_;
+  const int numj = photo_table.numj;
+  const int nw = photo_table.nw;
+  const int nt = photo_table.nt;
+  const int np_xs = photo_table.np_xs;
+  auto xsqy_host = Kokkos::create_mirror_view(photo_table.xsqy);
+  Kokkos::deep_copy(xsqy_host, photo_table.xsqy);
+  for (int i=0; i<numj; ++i)
+  for (int j=0; j<nw; ++j)
+  for (int k=0; k<nt; ++k)
+  for (int l=0; l<np_xs; ++l)
+  std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" xsqy("<<i<<","<<j<<", "<<k<<", "<<l<<"):"<<std::setprecision(14) <<xsqy_host(i,j,k,l)<<std::endl;
+}
+if (1) {
+  const auto &photo_table =  work_photo_table_;
+  auto photo_table_host = Kokkos::create_mirror_view(photo_table);
+  Kokkos::deep_copy(photo_table_host, photo_table);
+  const int photo_table_len = get_photo_table_work_len(photo_table_);
+  for (int icol=0; icol<ncol; ++icol)
+  for (int j=0; j<photo_table_len; ++j)
+  std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" work_photo_table("<<icol<<","<<j<<"):"<<std::setprecision(14) <<photo_table_host(icol,j)<<std::endl;
+}
+if (1)
+for (int icol=0; icol<ncol; ++icol) {
+  using namespace mam4;
+  using View2D = DeviceType::view_2d<Real>;
+  using View1D = DeviceType::view_1d<Real>;
+  const auto work_set_het_icol = ekat::subview(work_set_het, icol);
+  auto work_set_het_ptr = (Real *)work_set_het_icol.data();
+  const auto het_rates = View2D(work_set_het_ptr, nlev, gas_pcnst);
+  work_set_het_ptr += nlev * gas_pcnst;
+  {
+    auto het_host = Kokkos::create_mirror_view(het_rates);
+    Kokkos::deep_copy(het_host, het_rates);;
+    for (int j = 0; j < nlev; ++j)
+    for (int mm = 0; mm < gas_pcnst; ++mm)
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" het_host["<<icol<<"]["<<j<<"]["<<mm<<"]:"<<std::setprecision(14) <<het_host(j,mm)<<std::endl;
+  }
+  for (int i = 0; i < gas_pcnst; ++i) {
+    auto vmr_col = ColumnView(work_set_het_ptr, nlev);
+    work_set_het_ptr += nlev;
+    auto vmr_host = Kokkos::create_mirror_view(vmr_col);
+    Kokkos::deep_copy(vmr_host, vmr_col);
+    for (int j = 0; j < nlev; ++j)
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" vmr_host["<<icol<<"]["<<i<<"]["<<j<<"]:"<<std::setprecision(14) <<vmr_host[j]<<std::endl;
+  }
+  const int sethet_work_len = mam4::mo_sethet::get_work_len_sethet();
+  const auto work_sethet_call = View1D(work_set_het_ptr, sethet_work_len);
+  work_set_het_ptr += sethet_work_len;
+  auto sethet_call  = Kokkos::create_mirror_view(work_sethet_call);
+  Kokkos::deep_copy(sethet_call, work_sethet_call);
+  for (int j = 0; j < sethet_work_len; ++j)
+    std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" sethet_call["<<icol<<"]["<<j<<"]:"<<std::setprecision(14) <<sethet_call[j]<<std::endl;
+
+
+  auto work_ptr = (Real *) sethet_call.data();
+  auto t_factor  = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xk0_hno3  = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xk0_so2   = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto so2_diss  = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xgas2     = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xgas3     = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto delz      = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xh2o2     = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xso2      = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xliq      = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto rain      = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto precip    = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xhen_h2o2 = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xhen_hno3 = View1D(work_ptr, nlev); work_ptr += nlev;
+  auto xhen_so2  = View1D(work_ptr, nlev); work_ptr += nlev;
+
+  ColumnView tmp_hetrates[gas_pcnst];
+  for (int i = 0; i < gas_pcnst; ++i) {
+    tmp_hetrates[i] = ColumnView(work_ptr, nlev);
+    work_ptr += nlev;
+  }
+}
+if (0){
+  {
+    auto &dry_atm = postprocess_.dry_atm_post_;
+    auto qv = Kokkos::create_mirror_view(dry_atm.qv);
+    Kokkos::deep_copy(qv, dry_atm.qv);
+    for (int icol=0; icol<ncol; ++icol)
+    for (int j = 0; j < nlev; ++j)
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" atm.qv("<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<qv(icol,j)<<std::endl;
+  }
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    auto &dry_aero = postprocess_.dry_aero_post_;
+    auto int_nmr = Kokkos::create_mirror_view(dry_aero.int_aero_nmr[m]);
+    auto cld_nmr = Kokkos::create_mirror_view(dry_aero.cld_aero_nmr[m]);
+    Kokkos::deep_copy(int_nmr, dry_aero.int_aero_nmr[m]);
+    Kokkos::deep_copy(cld_nmr, dry_aero.cld_aero_nmr[m]);
+    for (int icol=0; icol<ncol; ++icol) {
+    for (int j = 0; j < nlev; ++j)  {
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.int_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_nmr(icol,j)<<std::endl;
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.cld_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_nmr(icol,j)<<std::endl;
+    }}
+  }
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    for (int a = 0; a < mam4::num_species_mode(m); ++a) {
+      auto &dry_aero = postprocess_.dry_aero_post_;
+      auto int_mmr = Kokkos::create_mirror_view(dry_aero.int_aero_mmr[m][a]);
+      auto cld_mmr = Kokkos::create_mirror_view(dry_aero.cld_aero_mmr[m][a]);
+      Kokkos::deep_copy(int_mmr, dry_aero.int_aero_mmr[m][a]);
+      Kokkos::deep_copy(cld_mmr, dry_aero.cld_aero_mmr[m][a]);
+      for (int icol=0; icol<ncol; ++icol) {
+      for (int j = 0; j < nlev; ++j)  {
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.int_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_mmr(icol,j)<<std::endl;
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.cld_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_mmr(icol,j)<<std::endl;
+      }}
+    }
+  }
+  for (int g = 0; g < mam_coupling::num_aero_gases(); ++g) {
+    auto &dry_aero = postprocess_.dry_aero_post_;
+    auto gas_mmr = Kokkos::create_mirror_view(dry_aero.gas_mmr[g]);
+    Kokkos::deep_copy(gas_mmr, dry_aero.gas_mmr[g]);
+    for (int icol=0; icol<ncol; ++icol)
+    for (int j = 0; j < nlev; ++j)
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" dry.gas_mmr("<<g<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<gas_mmr(icol,j)<<std::endl;
+  }
+}
+
   // postprocess output
   Kokkos::parallel_for("postprocess", policy, postprocess_);
   Kokkos::fence();
 
+
+
+if (0) {
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    auto &wet_aero = postprocess_.wet_aero_post_;
+    auto int_nmr = Kokkos::create_mirror_view(wet_aero.int_aero_nmr[m]);
+    auto cld_nmr = Kokkos::create_mirror_view(wet_aero.cld_aero_nmr[m]);
+    Kokkos::deep_copy(int_nmr, wet_aero.int_aero_nmr[m]);
+    Kokkos::deep_copy(cld_nmr, wet_aero.cld_aero_nmr[m]);
+    for (int icol=0; icol<ncol; ++icol) {
+    for (int j = 0; j < nlev; ++j)  {
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.int_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_nmr(icol,j) <<std::endl;
+      std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.cld_nmr("<<m<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_nmr(icol,j) <<std::endl;
+    }}
+  }
+  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
+    for (int a = 0; a <  mam4::num_species_mode(m); ++a) {
+      auto &wet_aero = postprocess_.wet_aero_post_;
+      auto int_mmr = Kokkos::create_mirror_view(wet_aero.int_aero_mmr[m][a]);
+      auto cld_mmr = Kokkos::create_mirror_view(wet_aero.cld_aero_mmr[m][a]);
+      Kokkos::deep_copy(int_mmr, wet_aero.int_aero_mmr[m][a]);
+      Kokkos::deep_copy(cld_mmr, wet_aero.cld_aero_mmr[m][a]);
+      for (int icol=0; icol<ncol; ++icol) {
+      for (int j = 0; j < nlev; ++j)  {
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.int_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<int_mmr(icol,j)<<std::endl;
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.cld_mmr("<<m<<" "<<a<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<cld_mmr(icol,j)<<std::endl;
+      }}
+    }
+  }
+  for (int g = 0; g < mam_coupling::num_aero_gases(); ++g) {
+    auto &wet_aero = postprocess_.wet_aero_post_;
+    auto gas_mmr = Kokkos::create_mirror_view(wet_aero.gas_mmr[g]);
+    Kokkos::deep_copy(gas_mmr, wet_aero.gas_mmr[g]);
+    for (int icol=0; icol<ncol; ++icol)
+    for (int j = 0; j < nlev; ++j)
+        std::cout<<__FILE__<<":"<<__LINE__<<":"<<t<<" wet.gas_mmr("<<g<<" "<<icol<<" "<<j<<"]:"<<std::setprecision(14) <<gas_mmr(icol, j)<<std::endl;
+  }
+}
 }  // MAMMicrophysics::run_impl
 
 }  // namespace scream
